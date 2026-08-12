@@ -13,11 +13,9 @@ transferred to downstream name-level prediction.**
 
 ## Overview
 
-This repository explores a practical approach to **Chinese sub-character
-representation learning and transfer learning**.
+This repository explores a practical approach to **Chinese sub-character representation learning and transfer learning**.
 
-Instead of treating each Chinese character as an atomic symbol, the
-model represents a character using two complementary structural signals:
+Instead of treating each Chinese character as an atomic symbol, the model represents a character using two complementary structural signals:
 
 1.  **Radical identity**
 2.  **Ordered structural decomposition**, including Ideographic
@@ -58,11 +56,9 @@ $$ z_2 = E(c_2) ^{64} $$
 
 and the name representation is:
 
-$$ z_{} = [z_1;z_2] ^{128}. $$]
+$$ z_{} = [z_1;z_2] ^{128}. $$
 
-The downstream predictor therefore learns from **reusable sub-character
-structural representations**, rather than learning a separate embedding
-for every complete name.
+The downstream predictor therefore learns from **reusable sub-character structural representations**, rather than learning a separate embedding for every complete name.
 
 ------------------------------------------------------------------------
 
@@ -149,9 +145,7 @@ decomposition concepts.
 
 The character encoder receives:
 
-    radical
-    +
-    ordered structural decomposition sequence
+    radical + ordered structural decomposition sequence
 
 The two representations are processed separately and then fused.
 
@@ -240,11 +234,11 @@ where:
 
 For a two-character name:
 
-$$ z_{}=[z(c_1),z(c_2)]. $$
+$$ z_{\mathrm{name}}=[z(c_1),z(c_2)] $$
 
 The downstream model then learns:
 
-$$ P() = G(z_{}). $$
+$$ P(name) = G(z_{\mathrm{name}}). $$
 
 The encoder remains frozen during downstream training.
 
@@ -424,7 +418,7 @@ These constitute the **general reusable encoder**.
 
 They can be used to compute:
 
-$$ (r_c,s_c)z_c $$
+$$ (r_c,s_c)\rightarrow z_c $$
 
 for characters represented by the structural input vocabulary.
 
@@ -540,15 +534,11 @@ See the dataset source and paper references at the end of this README.
 
 The current implementation reports the following preliminary evaluation:
 
-  -------------------------------------------------------------
-  Metric                                                 Result
-  ------------------------------ ------------------------------
-  Accuracy                                           **92.17%**
-
-  ROC-AUC                                            **0.9683**
-
-  Evaluation records                                 **20,000**
-  -------------------------------------------------------------
+| Metric | Result |
+| :--- | ---: |
+| Accuracy | **92.17%** |
+| ROC-AUC | **0.9683** |
+| Evaluation records | **20,000** |
 
 These numbers should be interpreted as **preliminary measurements**, not
 as definitive benchmark results.
@@ -638,11 +628,11 @@ compact representation.
 
 The character representation is deliberately compact:
 
-$$ z_c^{64}. $$
+$$ z_c\in\mathbb{R}^{64}. $$
 
 A two-character name requires:
 
-$$ z\_{}^{128}. $$
+$$ z_{\mathrm{name}}\in\mathbb{R}^{128}. $$
 
 This makes the representation attractive for applications that require
 repeated processing of large numbers of Chinese names or characters.
@@ -741,13 +731,9 @@ This repository uses external character and name datasets.
 The character decomposition data is based on publicly available Chinese
 character resources.
 
-The repository also includes processing derived from:
+The repository also includes processing derived from Make Me a Hanzi:
 
 - `dictionary.txt`
-- Make Me a Hanzi-related character data
-
-The repository does not depend on the external Chinese Character
-Decomposition Data project at runtime.
 
 ## Chinese name gender data
 
