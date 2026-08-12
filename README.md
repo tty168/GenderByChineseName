@@ -4,11 +4,6 @@
 ordered structural decomposition, pretrained with an autoencoder and
 transferred to downstream name-level prediction.**
 
-[Paper](https://doi.org)
-
-**Author:** Ted Yuan\
-**Updated:** August 2026
-
 ------------------------------------------------------------------------
 
 ## Overview
@@ -776,8 +771,6 @@ requirements.
 ------------------------------------------------------------------------
 
 # Citation
-
-(Te updated with arXiv)
 
 If you use this repository or the structural encoder in your research,
 please cite the associated OSF preprint:
