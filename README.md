@@ -1,265 +1,826 @@
-# Sub-Character Embedding for Chinese Language Models and Transfer Learning for Gender By Chinese Name
+# Efficient Sub-Character Transfer Learning for Chinese Name Gender Prediction
 
-[Ted Yuan](https://www.linkedin.com/in/tedyuan/)
-August, 2026
+**A compact Chinese character encoder based on radical identity and
+ordered structural decomposition, pretrained with an autoencoder and
+transferred to downstream name-level prediction.**
 
-## 1. Introduction to Chinese Characters 
+[Paper](https://doi.org)
 
-### 1.1 汉字的组成部分, 偏旁和部首 (Chinese Character Components and Radicals)
+**Author:** Ted Yuan\
+**Updated:** August 2026
 
-汉字由笔画、部件（偏旁）和整字三个层次组成。偏旁是合体字的构字部件，部首是字典中为了分类和检索而设立的特定表义偏旁，而更小的层级还包括笔画和声旁/形旁
+------------------------------------------------------------------------
 
-### 1.2 汉字的主要组成层级
+## Overview
 
-* 笔画 (Strokes)
-   * 汉字最小的构成单位。
-   * 例子：一（横）、丨（竖）、丿（撇）、㇏（捺）。 [2]
-* 部件 / 偏旁 (Components / Pianpang)
-   * 由笔画组成的、能组配汉字的构字单位。古代指左右结构的左偏右旁，现代泛指上下、左右、内外等所有构字部分。
-   * 例子：“明”字可拆分为“日”和“月”两个部件。 [2, 4, 5, 6]
-* 部首 (Radicals)
-   * 具有字形归类和查检字典功能的特殊偏旁，通常处于字的首位或表义核心。
-   * 例子：“妈”字的部首是“女”，“你”字的部首是“亻”。 [3, 4, 5, 7]
-* 形旁与声旁 (Meaning and Sound components)
-   * 形旁：表示汉字的意义范畴（如“氵”表示与水相关）。
-   * 声旁：表示汉字的读音线索（如“清”中的“青”提示读音）。 [5]
+This repository explores a practical approach to **Chinese sub-character
+representation learning and transfer learning**.
 
-### 1.3 偏旁、部首与部件的联系和区别
+Instead of treating each Chinese character as an atomic symbol, the
+model represents a character using two complementary structural signals:
 
-* 范围不同：部首一定是偏旁，但偏旁不一定能成为部首。所有的部首都是部件，但部件比偏旁和部首的范围更大。
-* 用途不同：偏旁侧重于分析字形结构与组字规律；部首侧重于辞书编纂与汉字检索。
+1.  **Radical identity**
+2.  **Ordered structural decomposition**, including Ideographic
+    Description Characters (IDCs) and their component sequence
 
-### 1.4 演示一个具体汉字的完整拆解过程
+These inputs are encoded by a lightweight autoencoder into a
+**64-dimensional character representation**.
 
-这里以汉字“湖” (hú) 为例，展示它从整字到笔画的完整拆解过程。
-#### 汉字“湖”的结构拆解
-```
-       【 湖 】 (整字)
-        /    \
-     【氵】  【胡】 (第一层：偏旁/部件)
-              /   \
-           【古】 【月】 (第二层：切分部件)
-            /   \
-         【十】【口】 (第三层：独体字)
-```
-#### 1. 整字层 (Whole Character)
+The pretrained encoder is then **frozen** and reused for a downstream
+Chinese name gender prediction task.
 
-* 字：湖
-* 结构：左中右结构（也可以看作左边的“氵”和右边的“胡”组成的左右结构）。
-* 类型：形声字（形旁表意，声旁表音）。
+The central idea is:
 
-#### 2. 偏旁与部件层 (Components / Pianpang)
+    Chinese character
+           │
+           ├── Radical
+           │
+           └── Ordered structural decomposition
+                        │
+                        ▼
+                 Structural Encoder
+                        │
+                        ▼
+                     64-D vector
+                        │
+                 ┌──────┴──────┐
+                 │             │
+            reconstruction   transfer
+                               │
+                               ▼
+                     Chinese name model
 
-* 左侧偏旁（形旁 / 部首）：氵 (三点水)
-* 作用：表示意义。提示这个字的含义与水有关（江河湖海）。
-   * 身份：它既是偏旁，也是检索这个字时的部首。
-* 右侧部件（声旁）：胡
-* 作用：提示读音。“胡” (hú) 与“湖” (hú) 读音相同。
+For a two-character name:
 
-#### 3. 更深层的部件拆解 (Sub-components)
-右边的“胡”字是一个合体字，可以进一步拆解：
+$$ z_1 = E(c_1) ^{64} $$
 
-* 古：左上方的部件。
-* 可再细分为独体字：十（shí）和 口（kǒu）。
-* 月：右下方的部件（肉字旁）。
+$$ z_2 = E(c_2) ^{64} $$
 
-#### 4. 最小单位：笔画层 (Strokes)
-“湖”字共有 12 画。按正确的笔顺拆解为：
+and the name representation is:
 
-* 氵（3画）：点、点、提
-* 古（5画）：横、竖、竖、横折、横
-* 月（4画）：撇、横折钩、横、横
+$$ z_{} = [z_1;z_2] ^{128}. $$]
 
+The downstream predictor therefore learns from **reusable sub-character
+structural representations**, rather than learning a separate embedding
+for every complete name.
 
-## 2. Goal 
+------------------------------------------------------------------------
 
-We propose a compact sub-character structural encoder that jointly represents radical identity and the ordered structural decomposition of Chinese characters, compressing them into a 64-dimensional latent representation through multi-target reconstruction. The resulting encoder can be frozen and reused as a lightweight character representation for downstream tasks.
+## Research Question
 
-To prove the following hypothesis.
+The central question is:
 
-### Hypothesis
-A Chinese character representation learned solely from Chinese sub-character structure can transfer to a downstream semantic/social prediction task without task-specific modification of the representation.
-
-In other words,
-How much useful Chinese character knowledge can be compressed into a small, reusable representation when the model is given both radical identity and ordered structural decomposition?
+> **How much useful Chinese character information can be compressed into
+> a small, reusable representation when the model is given both radical
+> identity and ordered structural decomposition?**
 
-### Architecture
+The corresponding hypothesis is:
 
-Sub-Character Transfer Learning for Chinese Name Gender Prediction
+> **A Chinese character representation learned from sub-character
+> structure can transfer to a downstream prediction task without
+> requiring the pretrained encoder to be fine-tuned.**
 
-#### Design
-```
-        AUTOENCODER
+The current repository uses Chinese name gender prediction as a
+downstream demonstration of this transfer.
 
-learn Chinese character structure
-             ↓
-          freeze
-             ↓
-       GENDER MODEL
+------------------------------------------------------------------------
 
-learn how structural representations
-   relate to name-level gender
-```
-
-The architecture effectively implements:
-
-$$z(c)=E(\text{radical}(c),\text{components}(c))$$
-
-Then for a two-character name:
-
-$$
-z(name)=[z(c_1),z(c_2)]
-$$
-
-and:
-
-$$
-P(\text{male}\mid name)=G([z(c_1),z(c_2)])
-$$
-
-
-This means the gender classifier doesn't directly learn from the glyph identity.
-
-It learns from a representation of the character's sub-character structure.
-
-That's exactly where the phrase Sub-Character Transfer Learning becomes meaningful.
-
-The latent representation captures reusable structural information about Chinese characters, and this structural information can be transferred to another task.
-
-## 3. Dataset and  Code Availability
-The source code and trained model weights for this project are available here.
-
-### Programming Environment
-```bash
-$python --version
-Python 3.12.13
-$ sqlite3 --version
-3.51.0 2025-06-12 13:14:41 f0ca7bba1c5e232e5d279fad6338121ab55af0c8c68c84cdfb18ba5114dcaapl (64-bit)
-```
-
-### Datasets
-  - Vocabularies
-    - **data/radicals.txt**: contains 294 unique radicals 部首
-    - **data/components.txt**: contains 1823 unique components 偏旁部件
-
-  - Chinese Character (汉字) SQLite3 Database
-    - **data/hanzi.db**: contains detail of 9574 characters. Example usage:
-```bash
-# show tables
-sqlite3 hanzi.db ".tables"
-# display schema
-sqlite3 hanzi.db ".schema characters"
-
-sqlite3 hanzi.db "select * from characters limit 10"
-```
-output:
-```
-⺀|？|ice|||||None,None||⺀
-⺈|？||||||None,None||⺈
-⺊|⿰丨？||A crack on an oracle bone; compare 卜|||ideographic|[0],None||⺊
-⺌|？||||||None,None,None||⺌
-⺍|？||||||None,None,None||⺍
-⺗|？|heart; mind; soul|||||None,None,None,None||⺗
-⺮|？|bamboo; flute|Two stalks of bamboo; see 竹|||pictographic|None,None,None,None,None,None|zhú|⺮
-⺳|⿱冖八|net, network|||||[0],[0],[1],[1]||⺳
-⺼|？|meat, flesh; organic compound|Meat on the ribs of an animal; compare 肉|||pictographic|None,None,None,None||⺼
-㐆|⿻尸？|old form of 隱|||||None,[0],[0],None,[0],None|yǐn|尸
-```
-
-```bash
-sqlite3 hanzi.db "select * from ideographic_description_characters limit 10"
-```
-output:
-```
-1|⿰|U+2FF0|Ideographic description character left to right
-2|⿱|U+2FF1|Ideographic description character above to below
-3|⿲|U+2FF2|Ideographic description character left to middle and right
-4|⿳|U+2FF3|Ideographic description character above to middle and below
-5|⿴|U+2FF4|Ideographic description character full surround
-6|⿵|U+2FF5|Ideographic description character surround from above
-7|⿶|U+2FF6|Ideographic description character surround from below
-8|⿷|U+2FF7|Ideographic description character surround from left
-9|⿼|U+2FFC|Ideographic description character surround from right
-10|⿸|U+2FF8|Ideographic description character surround from upper left
-
-```
-
-  - **data/training_dataset.txt**: contains 9754 entries of character, radical, decomposition fields separated by '|'.
-    - The decomposition field contains component sequence, phonetic and semantic components
-    - These serve as features in the sub-character embedding and unsupervised learning, e.g., an autoencoder.
-
-  - Two external datasets and dependency
-    - **[dictionary.txt](https://github.com/skishore/makemeahanzi/blob/master/dictionary.txt)** contains 9574 characters and the sub-character information.
-    - **[gender/dataverse_files/CnGender.txt](https://www.nature.com/articles/s41597-025-06276-y)** contains ~1 million Chinese names with Male probability.
-
-
-### Data Processing
-  - **python/scan_schema.py**
-    - Input: **[dictionary.txt](https://github.com/skishore/makemeahanzi/blob/master/dictionary.txt)** contains 9574 characters and the sub-character information.
-    - Output: hanzi_dictionary.csv. It is used to create hanzi.db. The CSV file has the schema:
-```
-{
-    "character": ["str"],
-    "definition": ["str"],
-    "pinyin": ["list"],
-    "decomposition": ["str"],
-    "radical": ["str"],
-    "matches": ["list"],
-    "etymology_hint": ["null", "str"],
-    "etymology_phonetic": ["null", "str"],
-    "etymology_semantic": ["null", "str"],
-    "etymology_type": ["null", "str"]
-}
-```
-
-## 4. Sub-Character Embedding for Chinese Language Models
-
-We will need to install necessary python packages to develop the embedding and autoencoder.
-
-### Tensorflow/Keras Installation
-```bash
-# 1. Create a new environment named 'keras3_env' with Python 3.12
-conda create -n keras3_env python=3.12 -y
-
-# 2. Activate the new environment
-conda activate keras3_env
-
-# 3. Upgrade pip to ensure clean build wheels
-pip install --upgrade pip
-
-# 4. Install the required deep learning framework versions
-pip install tensorflow==2.21.0 keras==3.15.1 numpy
-
-# verify
-python -c "import os; os.environ['KERAS_BACKEND']='tensorflow'; import keras; print(keras.__version__)"
-
-```
-
-
-### Embedding and Un-supervised Learning
-
-
-  - python/chinese_char_autoencoder.py
-    - input: radicals.txt, components.txt, training_dataset.txt
-    - output: 
-      - Encoder latent embedding, model and vocabs: hanzi_encoder_weights.weights.h5, saved_radical_vocab.npy, saved_component_vocab.npy
-      - Latent embedding cache of the characters in training_dataset: hanzi_embeddings_64d.npy, hanzi_index_lookup.txt
-
-## 5. Transfer Learning for Gender By Chinese Name
-
-  - python/chinese_name_gender_predictor.py
-    - input: 
-      - Encoder embedding model: saved_radical_vocab.npy, saved_component_vocab.npy, hanzi_encoder_weights.weights.h5, 
-      - training_dataset.txt, used as the character → sub-character decomposition dictionary
-      - [gender/dataverse_files/CnGender.txt](https://www.nature.com/articles/s41597-025-06276-y), 1 million names and male probability.
-    - output: hanzi_name_gender_predictor.keras
-
-
-
-## 6. References
-
-* [Chinese character components - wikipedia.org](https://en.wikipedia.org/wiki/Chinese_character_components)
-* [Make Me a Hanzi - Free, open-source Chinese character data](https://github.com/skishore/makemeahanzi)
-* The Chinese Name-to-Gender Dataset ([Nature](https://www.nature.com/articles/s41597-025-06276-y)/[PubMed](https://pubmed.ncbi.nlm.nih.gov/41413051/))
-* Inspired by [Chinese Character Decomposition Data](https://github.com/JustinMi/Chinese-Character-Decomposition-Data) for data processing in Sqlite, but this repository does not use nor depend on it.
-* Paper is published at [https://doi.org/10.17605/OSF.IO/H2UJA](https://doi.org/10.17605/OSF.IO/H2UJA)
+# Why Ordered Structural Decomposition?
+
+Chinese character representations based only on component membership
+lose some structural information.
+
+For example:
+
+    ⿰ A B
+
+contains:
+
+- the structural operator `⿰`;
+- component `A`;
+- component `B`;
+- the ordering of those components.
+
+An unordered representation such as:
+
+    {A, B}
+
+does not preserve the same information.
+
+The model in this repository therefore treats the decomposition as an
+**ordered sequence**, rather than simply as an unordered collection of
+components.
+
+Conceptually:
+
+    Radical
+       +
+    Ordered IDS / structural sequence
+       ↓
+    Compact structural representation
+
+This is an important distinction from a simple bag-of-components
+representation.
+
+### Novelty positioning
+
+This project does **not** claim that radical embeddings, component
+embeddings, or IDS representations are themselves new. These are
+established forms of Chinese sub-character information.
+
+The contribution explored here is the practical combination of:
+
+- radical identity;
+- ordered structural decomposition;
+- compact 64-dimensional bottleneck;
+- multi-target structural reconstruction;
+- frozen encoder transfer;
+- position-preserving composition of character embeddings for names.
+
+The intended contribution is therefore **architectural and empirical**,
+rather than the invention of the underlying Chinese character
+decomposition concepts.
+
+------------------------------------------------------------------------
+
+# Architecture
+
+## Stage 1 --- Structural Autoencoder
+
+The character encoder receives:
+
+    radical
+    +
+    ordered structural decomposition sequence
+
+The two representations are processed separately and then fused.
+
+                      Character
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+           Radical             Structural Sequence
+              │                     │
+              ▼                     ▼
+       Radical Embedding       Token Embedding
+              │                     │
+              │                   Conv1D
+              │                     │
+              │              Global Average Pooling
+              │                     │
+              └──────────┬──────────┘
+                         │
+                    Concatenate
+                         │
+                         ▼
+                     Dense(64)
+                         │
+                         ▼
+                    z ∈ R⁶⁴
+                         │
+                  ┌──────┴──────┐
+                  │             │
+                  ▼             ▼
+           Radical Decoder   Sequence Decoder
+                  │             │
+                  ▼             ▼
+            Radical output   Structural output
+
+The encoder is trained through reconstruction rather than directly
+through the downstream gender labels.
+
+This makes the learned 64-dimensional vector a **structural
+representation** rather than a gender-specific embedding.
+
+------------------------------------------------------------------------
+
+## Stage 2 --- Frozen Transfer Learning
+
+After structural pretraining, the encoder is frozen.
+
+For a two-character name:
+
+    Character 1
+        │
+        ▼
+     Frozen Encoder
+        │
+        ▼
+      64-D
+        │
+        ├──────────────┐
+                       │
+    Character 2        │
+        │              │
+        ▼              │
+     Frozen Encoder    │
+        │              │
+        ▼              │
+      64-D             │
+        │              │
+        └──────┬───────┘
+               ▼
+          Concatenate
+               │
+               ▼
+            128-D
+               │
+               ▼
+        Gender Predictor
+
+Mathematically:
+
+$$ z(c)=E(r_c,s_c) $$
+
+where:
+
+- (r_c) is the radical representation;
+- (s_c) is the ordered structural sequence;
+- (E) is the pretrained encoder.
+
+For a two-character name:
+
+$$ z_{}=[z(c_1),z(c_2)]. $$
+
+The downstream model then learns:
+
+$$ P() = G(z_{}). $$
+
+The encoder remains frozen during downstream training.
+
+------------------------------------------------------------------------
+
+# Repository Structure
+
+The important files are:
+
+    .
+    ├── data/
+    │   ├── radicals.txt
+    │   ├── components.txt
+    │   ├── training_dataset.txt
+    │   └── hanzi.db
+    │
+    ├── python/
+    │   ├── scan_schema.py
+    │   ├── chinese_char_autoencoder.py
+    │   └── chinese_name_gender_predictor.py
+    │
+    ├── hanzi_encoder_weights.weights.h5
+    ├── saved_radical_vocab.npy
+    ├── saved_component_vocab.npy
+    ├── hanzi_embeddings_64d.npy
+    ├── hanzi_index_lookup.txt
+    └── hanzi_name_gender_predictor.keras
+
+------------------------------------------------------------------------
+
+# Character Data
+
+The repository contains a structural inventory of approximately **9,574
+Chinese characters**.
+
+## Radical vocabulary
+
+    data/radicals.txt
+
+contains approximately **294 radical entries**.
+
+## Component vocabulary
+
+    data/components.txt
+
+contains approximately **1,823 component entries**.
+
+## Character training data
+
+    data/training_dataset.txt
+
+contains character records with:
+
+    character | radical | decomposition
+
+The decomposition field preserves the structural sequence used by the
+encoder.
+
+The decomposition may contain structural operators and component
+characters. These values are used as input features for the structural
+encoder and its reconstruction objective.
+
+------------------------------------------------------------------------
+
+# SQLite Character Database
+
+    data/hanzi.db
+
+contains detailed information for approximately 9,574 characters.
+
+The database includes character-level structural information and the
+Unicode Ideographic Description Characters.
+
+For example:
+
+    ⿰  U+2FF0  left to right
+    ⿱  U+2FF1  above to below
+    ⿲  U+2FF2  left to middle and right
+    ⿳  U+2FF3  above to middle and below
+    ⿴  U+2FF4  full surround
+
+The database can be inspected with SQLite:
+
+    sqlite3 data/hanzi.db ".tables"
+    sqlite3 data/hanzi.db ".schema characters"
+    sqlite3 data/hanzi.db \
+      "select * from characters limit 10"
+
+------------------------------------------------------------------------
+
+# Data Processing
+
+The character database is generated from the source dictionary data.
+
+    python/scan_schema.py
+
+reads the source character information and generates the structured CSV
+used to create the SQLite database.
+
+The resulting character schema includes fields such as:
+
+    character
+    definition
+    pinyin
+    decomposition
+    radical
+    matches
+    etymology_hint
+    etymology_phonetic
+    etymology_semantic
+    etymology_type
+
+------------------------------------------------------------------------
+
+# Installation
+
+The current implementation uses Python 3.12 with TensorFlow/Keras.
+
+## Create environment
+
+    conda create -n keras3_env python=3.12 -y
+    conda activate keras3_env
+
+## Install dependencies
+
+    pip install --upgrade pip
+    pip install tensorflow==2.21.0 keras==3.15.1 numpy
+
+Verify Keras:
+
+    python -c \
+    "import os; os.environ['KERAS_BACKEND']='tensorflow'; \
+    import keras; print(keras.__version__)"
+
+------------------------------------------------------------------------
+
+# Step 1 --- Train the Character Autoencoder
+
+Run:
+
+    python python/chinese_char_autoencoder.py
+
+### Inputs
+
+The autoencoder uses:
+
+    data/radicals.txt
+    data/components.txt
+    data/training_dataset.txt
+
+### Main outputs
+
+The encoder weights and vocabularies are saved as:
+
+    hanzi_encoder_weights.weights.h5
+    saved_radical_vocab.npy
+    saved_component_vocab.npy
+
+The script also generates a precomputed embedding cache:
+
+    hanzi_embeddings_64d.npy
+    hanzi_index_lookup.txt
+
+------------------------------------------------------------------------
+
+# Encoder Model vs. `hanzi_embeddings_64d.npy`
+
+There are two related but different artifacts.
+
+## 1. Encoder + vocabularies
+
+    hanzi_encoder_weights.weights.h5
+    saved_radical_vocab.npy
+    saved_component_vocab.npy
+
+These constitute the **general reusable encoder**.
+
+They can be used to compute:
+
+$$ (r_c,s_c)z_c $$
+
+for characters represented by the structural input vocabulary.
+
+This is the preferred representation of the trained model for transfer
+learning.
+
+## 2. Precomputed embedding matrix
+
+    hanzi_embeddings_64d.npy
+
+is a cached matrix containing the 64-dimensional embeddings already
+generated for the characters in the training inventory.
+
+It is useful for fast lookup:
+
+    character
+        ↓
+    embedding lookup
+        ↓
+    64-D vector
+
+The `.npy` file is therefore a **cache of model outputs**, not a
+replacement for the encoder itself.
+
+If the goal is to build a more general downstream system, retain the
+encoder weights and vocabularies.
+
+------------------------------------------------------------------------
+
+# Step 2 --- Train the Name Gender Predictor
+
+Run:
+
+    python python/chinese_name_gender_predictor.py
+
+The downstream model uses the frozen pretrained character encoder.
+
+## Inputs
+
+    hanzi_encoder_weights.weights.h5
+    saved_radical_vocab.npy
+    saved_component_vocab.npy
+    data/training_dataset.txt
+
+and the external CnGender name dataset.
+
+The resulting model is:
+
+    hanzi_name_gender_predictor.keras
+
+------------------------------------------------------------------------
+
+# Why Does the Gender Predictor Need `training_dataset.txt`?
+
+The downstream predictor does not need `training_dataset.txt` to retrain
+the character encoder.
+
+The encoder is already pretrained and frozen.
+
+Instead, `training_dataset.txt` serves as the **character → structural
+decomposition lookup** needed to convert the characters appearing in a
+name into the inputs expected by the encoder.
+
+Conceptually:
+
+    Chinese name
+         │
+         ▼
+    individual characters
+         │
+         ▼
+    training_dataset.txt
+         │
+         ├── radical
+         │
+         └── ordered decomposition
+                 │
+                 ▼
+           Frozen Encoder
+                 │
+                 ▼
+               64-D
+
+Therefore:
+
+> `training_dataset.txt` is part of the **input representation
+> vocabulary/lookup pipeline**, not part of the downstream
+> label-learning process.
+
+This distinction is important when deploying the encoder independently.
+
+------------------------------------------------------------------------
+
+# CnGender Dataset
+
+The downstream experiment uses the **Chinese Name-to-Gender Dataset
+(CnGender)**.
+
+The repository references the dataset as an external dependency rather
+than redefining or redistributing the source dataset.
+
+The dataset contains approximately **one million Chinese names** with
+gender probability information.
+
+The predictor uses the name and its associated male-probability target
+for downstream learning.
+
+See the dataset source and paper references at the end of this README.
+
+------------------------------------------------------------------------
+
+# Preliminary Results
+
+The current implementation reports the following preliminary evaluation:
+
+  -------------------------------------------------------------
+  Metric                                                 Result
+  ------------------------------ ------------------------------
+  Accuracy                                           **92.17%**
+
+  ROC-AUC                                            **0.9683**
+
+  Evaluation records                                 **20,000**
+  -------------------------------------------------------------
+
+These numbers should be interpreted as **preliminary measurements**, not
+as definitive benchmark results.
+
+The current experiment uses a 20,000-record evaluation subset of the
+CnGender data. A future version should establish a strictly
+non-overlapping train/validation/test split before treating the test
+results as final generalization estimates.
+
+The results provide an initial indication that the frozen structural
+representation retains useful discriminative information for the
+downstream name-level task.
+
+They do **not**, by themselves, establish which particular structural
+features are responsible for the performance.
+
+------------------------------------------------------------------------
+
+# What This Experiment Is Testing
+
+The downstream experiment tests whether:
+
+    Chinese character structure
+            ↓
+    self-supervised encoder
+            ↓
+    frozen 64-D representation
+            ↓
+    name-level prediction
+
+can transfer useful information without fine-tuning the character
+encoder.
+
+The key research question is therefore broader than gender prediction:
+
+> **Can a compact structural representation learned independently of a
+> downstream task provide reusable information for later tasks?**
+
+Gender prediction is the current demonstration task.
+
+------------------------------------------------------------------------
+
+# Most Important Future Experiment
+
+The most direct test of the proposed representation is an
+**ordered-versus-unordered structural ablation**.
+
+Compare:
+
+    Radical + unordered components
+
+against:
+
+    Radical + ordered structural sequence
+
+The hypothesis is:
+
+$$ \text{Radical + ordered structure} > \text{Radical + unordered components} $$
+
+under comparable model capacity.
+
+Additional useful ablations include:
+
+    1. Random character embedding
+    2. Radical only
+    3. Ordered structure only
+    4. Unordered components only
+    5. Radical + unordered components
+    6. Radical + ordered structure
+    7. Frozen encoder
+    8. Fine-tuned encoder
+
+A bottleneck experiment can also compare:
+
+    16-D
+    32-D
+    64-D
+    128-D
+    256-D
+
+to determine how much structural information can be retained in a
+compact representation.
+
+------------------------------------------------------------------------
+
+# Efficiency
+
+The character representation is deliberately compact:
+
+$$ z_c^{64}. $$
+
+A two-character name requires:
+
+$$ z\_{}^{128}. $$
+
+This makes the representation attractive for applications that require
+repeated processing of large numbers of Chinese names or characters.
+
+The architecture also separates:
+
+    structural representation learning
+
+from:
+
+    downstream task learning.
+
+Once the encoder has been trained, the same character representation can
+potentially be reused for multiple downstream tasks.
+
+------------------------------------------------------------------------
+
+# Limitations
+
+The current implementation should be viewed as a research prototype.
+
+Important limitations include:
+
+### 1. Sequence rather than explicit tree encoding
+
+The structural decomposition is processed as an ordered sequence.
+
+The encoder does not explicitly construct a recursive IDS tree.
+
+### 2. Orthographic representation
+
+The current representation emphasizes written character structure. It
+does not explicitly model Pinyin, tone, or other phonological
+information.
+
+### 3. Unknown characters
+
+Characters absent from the structural vocabulary require fallback
+handling.
+
+### 4. Preliminary downstream evaluation
+
+The current 20,000-record evaluation should not be interpreted as a
+definitive held-out benchmark until a strict train/validation/test
+protocol is established.
+
+### 5. No ablation yet
+
+The current result does not isolate the contribution of:
+
+- radical information;
+- component identity;
+- structural ordering;
+- structural operators;
+- the 64-dimensional bottleneck.
+
+These should be tested in future experiments.
+
+------------------------------------------------------------------------
+
+# Reproducibility
+
+The core experiment can be reproduced from the repository using:
+
+    Character structural data
+            ↓
+    scan_schema.py
+            ↓
+    hanzi.db / training_dataset.txt
+            ↓
+    chinese_char_autoencoder.py
+            ↓
+    frozen encoder
+            ↓
+    chinese_name_gender_predictor.py
+            ↓
+    name-level prediction
+
+The principal model artifacts are:
+
+    hanzi_encoder_weights.weights.h5
+    saved_radical_vocab.npy
+    saved_component_vocab.npy
+    hanzi_embeddings_64d.npy
+    hanzi_index_lookup.txt
+    hanzi_name_gender_predictor.keras
+
+------------------------------------------------------------------------
+
+# External Data and Dependencies
+
+This repository uses external character and name datasets.
+
+## Chinese character data
+
+The character decomposition data is based on publicly available Chinese
+character resources.
+
+The repository also includes processing derived from:
+
+- `dictionary.txt`
+- Make Me a Hanzi-related character data
+
+The repository does not depend on the external Chinese Character
+Decomposition Data project at runtime.
+
+## Chinese name gender data
+
+The downstream experiment uses:
+
+**CnGender --- Chinese Name-to-Gender Dataset**
+
+The dataset contains large-scale Chinese name observations and gender
+probability information.
+
+Please consult the original dataset source for its licensing and usage
+requirements.
+
+------------------------------------------------------------------------
+
+# References
+
+1.  **Chinese Character Components**\
+    https://en.wikipedia.org/wiki/Chinese_character_components
+
+2.  **Make Me a Hanzi**\
+    https://github.com/skishore/makemeahanzi
+
+3.  **Chinese Name-to-Gender Dataset (CnGender)**\
+    https://www.nature.com/articles/s41597-025-05803-z
+
+4.  **OSF Preprint**\
+    https://doi.org/10.17605/OSF.IO/H2UJA
+
+5.  **Radical-Enhanced Chinese Character Embedding**\
+    https://arxiv.org/abs/1404.4714
+
+6.  **Component-Enhanced Chinese Character Embeddings**\
+    https://arxiv.org/abs/1508.06669
+
+7.  **Sub-Character Tokenization for Chinese Pretrained Language
+    Models**\
+    https://aclanthology.org/2023.tacl-1.28/
+
+------------------------------------------------------------------------
+
+# Citation
+
+(Te updated with arXiv)
+
+If you use this repository or the structural encoder in your research,
+please cite the associated OSF preprint:
+
+    @misc{yuan2026subcharacter,
+      author       = {Yuan, Ted},
+      title        = {Efficient Sub-Character Transfer Learning for Chinese Name Gender Prediction},
+      year         = {2026},
+      publisher    = {OSF},
+      doi          = {10.17605/OSF.IO/H2UJA},
+      url          = {https://doi.org/10.17605/OSF.IO/H2UJA}
+    }
+
+------------------------------------------------------------------------
+
+# Status
+
+This repository represents an **active research prototype**.
+
+The current results demonstrate the feasibility of transferring a
+compact Chinese sub-character representation to a downstream name-level
+prediction task.
+
+The next major validation step is a controlled ablation study testing
+whether **ordered structural decomposition provides measurable benefit
+over unordered component representations**, followed by evaluation on a
+strictly held-out test set.
+
+The broader objective is to determine whether compact, structurally
+informed Chinese character representations can provide a practical
+alternative or complement to much larger language-model-based
+representations for selected downstream tasks.
