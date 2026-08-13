@@ -252,6 +252,7 @@ saved_radical_vocab.npy
 saved_component_vocab.npy
 ```
 The encoder can encode a new character from its radical and ordered structural decomposition, provided the required vocabulary/input representation is available.
+
 $$ z_c\in\mathbb{R}^{64}. $$
 
 ### 2. Precomputed embedding matrix
@@ -284,12 +285,15 @@ hanzi_embeddings_64d.npy
 Usage:
 `python python/encode_hanzi_embedding.py 明`
 `echo "明月松间照" | python python/encode_hanzi_embedding.py`
+`echo "明月松间照" | python python/encode_hanzi_embedding.py --json`
 `echo "明月松间照" | python python/encode_hanzi_embedding.py --compact`
 
 The script returns one 64-D embedding for each character.
 
 Therefore, for a six-character sequence:
+
 $$ z_c\in\mathbb{R}^{6\times64}. $$
+
 The character order is preserved.
 
 
