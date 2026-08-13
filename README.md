@@ -255,6 +255,15 @@ The encoder can encode a new character from its radical and ordered structural d
 
 $$ z_c\in\mathbb{R}^{64}. $$
 
+Usage:
+```
+python python/encode_hanzi.py 明
+echo "明月松间照" | python python/encode_hanzi.py
+echo "明月松间照" | python python/encode_hanzi.py --json
+echo "明月松间照" | python python/encode_hanzi.py --compact
+```
+
+
 ### 2. Precomputed embedding matrix
 
 The autoencoder also generates:
