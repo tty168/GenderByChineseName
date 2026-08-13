@@ -233,9 +233,65 @@ $$ z_{\mathrm{name}}=[z(c_1),z(c_2)] $$
 
 The downstream model then learns:
 
-$$ P(name) = G(z_{\mathrm{name}}). $$
+$$ P(male | name) = G(z_{\mathrm{name}}). $$
 
 The encoder remains frozen during downstream training.
+
+------------------------------------------------------------------------
+
+## Two Ways to Use the Learned Representation
+
+The repository now provides two related but distinct interfaces.
+
+### 1. Full encoder
+
+The original encoder artifacts are:
+```
+hanzi_encoder_weights.weights.h5
+saved_radical_vocab.npy
+saved_component_vocab.npy
+```
+The encoder can encode a new character from its radical and ordered structural decomposition, provided the required vocabulary/input representation is available.
+$$ z_c\in\mathbb{R}^{64}. $$
+
+### 2. Precomputed embedding matrix
+
+The autoencoder also generates:
+```
+hanzi_embeddings_64d.npy
+hanzi_index_lookup.txt
+```
+This is a fast, model-free lookup path.
+
+It does not require TensorFlow/Keras at inference time.
+
+```
+Chinese character
+       │
+       ▼
+hanzi_index_lookup.txt
+       │
+       ▼
+row index
+       │
+       ▼
+hanzi_embeddings_64d.npy
+       │
+       ▼
+64-D embedding
+```
+
+Usage:
+`python python/encode_hanzi_embedding.py 明`
+`echo "明月松间照" | python python/encode_hanzi_embedding.py`
+`echo "明月松间照" | python python/encode_hanzi_embedding.py --compact`
+
+The script returns one 64-D embedding for each character.
+
+Therefore, for a six-character sequence:
+$$ z_c\in\mathbb{R}^{6\times64}. $$
+The character order is preserved.
+
 
 ------------------------------------------------------------------------
 
