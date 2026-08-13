@@ -283,10 +283,12 @@ hanzi_embeddings_64d.npy
 ```
 
 Usage:
-`python python/encode_hanzi_embedding.py 明`
-`echo "明月松间照" | python python/encode_hanzi_embedding.py`
-`echo "明月松间照" | python python/encode_hanzi_embedding.py --json`
-`echo "明月松间照" | python python/encode_hanzi_embedding.py --compact`
+```
+python python/encode_hanzi_embedding.py 明
+echo "明月松间照" | python python/encode_hanzi_embedding.py
+echo "明月松间照" | python python/encode_hanzi_embedding.py --json
+echo "明月松间照" | python python/encode_hanzi_embedding.py --compact
+```
 
 The script returns one 64-D embedding for each character.
 
