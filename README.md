@@ -271,7 +271,7 @@ The autoencoder also generates:
 hanzi_embeddings_64d.npy
 hanzi_index_lookup.txt
 ```
-This is a fast, model-free lookup path.
+The index sequence of both is the same. This is a fast, model-free lookup path.
 
 It does not require TensorFlow/Keras at inference time.
 
@@ -307,6 +307,10 @@ $$ z_c\in\mathbb{R}^{6\times64}. $$
 
 The character order is preserved.
 
+#### A tool to extract radicals only embeddings
+
+`python extract_radical_embeddings.py` generates radical_embeddings.csv and radical_embeddings_expanded.csv.
+
 
 ------------------------------------------------------------------------
 
@@ -327,7 +331,8 @@ The important files are:
 │   ├── chinese_char_autoencoder.py
 │   ├── chinese_name_gender_predictor.py
 │   ├── encode_hanzi.py
-│   └── encode_hanzi_embedding.py
+│   ├── encode_hanzi_embedding.py
+│   └── extract_radical_embeddings.py
 │
 ├── hanzi_encoder_weights.weights.h5
 ├── saved_radical_vocab.npy
