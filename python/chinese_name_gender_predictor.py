@@ -150,10 +150,12 @@ def gender_dataset_generator(file_path, delimiter="\t"):
 # ----------------------------------------------------
 # 6. INITIALIZE STREAMING ITERATOR DATASET
 # ----------------------------------------------------
-DATASET_PATH = "gender/dataverse_files/CnGender.txt"
+#DATASET_PATH = "gender/dataverse_files/CnGender.txt"
+DATASET_TRAIN_PATH = "gender/dataverse_files/CnGender_train.txt"
+DATASET_VALID_PATH = "gender/dataverse_files/CnGender_valid.txt"
 
 large_dataset = tf.data.Dataset.from_generator(
-    lambda: gender_dataset_generator(DATASET_PATH, delimiter="\t"),
+    lambda: gender_dataset_generator(DATASET_TRAIN_PATH, delimiter="\t"),
     output_signature=(
         {
             "char1_rad": tf.TensorSpec(shape=(1, 1), dtype=tf.int32),
@@ -169,7 +171,7 @@ BATCH_SIZE = 512
 train_dataset = large_dataset.shuffle(buffer_size=20000).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
 print(f"Starting pipeline training loops over locked transfer weights...")
-gender_model.fit(train_dataset, epochs=10, shuffle=None)
+gender_model.fit(train_dataset, epochs=20, shuffle=None)
 
 # ----------------------------------------------------
 # 7. INFERENCE EVALUATION PROFILER
@@ -301,7 +303,7 @@ def evaluate_production_model(file_path, model_pipeline, delimiter="\t", max_eva
 
 # Run verification evaluation over an unseen test slice of 20,000 dataverse lines
 evaluate_production_model(
-    file_path=DATASET_PATH,
+    file_path=DATASET_VALID_PATH,
     model_pipeline=gender_model,
     delimiter="\t",
     max_eval_records=20000
